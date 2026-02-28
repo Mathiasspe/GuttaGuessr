@@ -334,52 +334,57 @@
   /* ===== RESULT SCREEN ===== */
   .result {
     flex-direction: column;
+    height: 100vh;
+    padding: 1rem 1.5rem;
+    gap: 0.75rem;
     align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    gap: 1.5rem;
   }
   .result-top {
     text-align: center;
     animation: popIn 0.4s ease;
+    flex-shrink: 0;
   }
   .result-top h1 {
     font-family: var(--font-display);
-    font-size: 2rem;
-    margin-bottom: 0.25rem;
+    font-size: 1.8rem;
+    margin-bottom: 0.15rem;
   }
   .result-top .round-label {
     color: var(--text-dim);
-    font-size: 0.95rem;
+    font-size: 0.85rem;
   }
   .result-content {
     display: flex;
-    gap: 1.5rem;
-    max-width: 1100px;
+    gap: 1rem;
     width: 100%;
+    flex: 1;
+    min-height: 0;
   }
   #result-map-host {
-    flex: 1.2;
-    min-height: 400px;
+    flex: 2;
     border-radius: var(--radius);
     border: 1px solid var(--border);
     overflow: hidden;
+    min-height: 0;
   }
   .result-sidebar {
-    flex: 0.8;
+    flex: 0.7;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.4rem;
+    overflow-y: auto;
+    min-height: 0;
   }
   .result-player-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 1rem 1.25rem;
+    padding: 0.6rem 0.9rem;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.6rem;
     animation: slideUp 0.4s ease both;
+    flex-shrink: 0;
   }
   .result-player-card:first-child {
     background: linear-gradient(135deg, rgba(255,107,53,0.12), rgba(255,179,71,0.08));
@@ -388,28 +393,29 @@
   .result-rank {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 1.5rem;
-    min-width: 2.5rem;
+    font-size: 1.2rem;
+    min-width: 2rem;
     text-align: center;
   }
   .result-player-info { flex: 1; }
   .result-player-info .name {
     font-weight: 600;
-    font-size: 1.05rem;
-    margin-bottom: 0.15rem;
+    font-size: 0.9rem;
+    margin-bottom: 0.1rem;
   }
   .result-player-info .dist {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
   }
   .result-player-points {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 1.2rem;
+    font-size: 1rem;
     color: var(--accent);
+    white-space: nowrap;
   }
   .result-actions {
-    margin-top: 0.5rem;
+    flex-shrink: 0;
   }
 
   /* ===== LEADERBOARD ===== */
@@ -490,7 +496,8 @@
     .logo { font-size: 3rem; }
     .lobby-layout { flex-direction: column; }
     .result-content { flex-direction: column; }
-    #result-map-host { min-height: 280px; }
+    #result-map-host { min-height: 300px; }
+    .result-sidebar { max-height: 200px; }
     .room-code-value { font-size: 2.2rem; }
   }
 </style>
@@ -597,13 +604,13 @@
 // =============================================================================
 // Go to Firebase Console → Project Settings → Your apps → Config
 const firebaseConfig = {
-  apiKey: "AIzaSyC8OgZwMrx2fWL-lVsKOkys5fSMennFV8k",
-  authDomain: "simulatorpriser.firebaseapp.com",
-  databaseURL: "https://simulatorpriser-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "simulatorpriser",
-  storageBucket: "simulatorpriser.firebasestorage.app",
-  messagingSenderId: "821698736622",
-  appId: "1:821698736622:web:7a7982d953aa19ede55eff"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "YOUR_APP_ID"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -636,7 +643,6 @@ const PHOTOS = [
 
 
 ];
-
 
 // =============================================================================
 // GAME STATE
@@ -986,6 +992,10 @@ function showRoundResult(roundIndex, photo, results, totalRounds) {
   });
 
   if (bounds.length > 1) resultMap.fitBounds(bounds, { padding: [50, 50] });
+
+  // Force map to recalculate size after screen transition
+  setTimeout(() => { resultMap.invalidateSize(); if (bounds.length > 1) resultMap.fitBounds(bounds, { padding: [50, 50] }); }, 100);
+  setTimeout(() => { resultMap.invalidateSize(); }, 500);
 
   // Player cards
   document.getElementById('result-sidebar').innerHTML = results.map((r, i) => `

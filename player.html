@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PhotoGuessr — Player</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Satoshi:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface-2: #1c1c28;
+    --surface-3: #25253a;
+    --accent: #ff6b35;
+    --accent-glow: #ff6b3544;
+    --accent-2: #ffb347;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --text: #eaeaf0;
+    --text-dim: #8888a0;
+    --text-muted: #555568;
+    --border: #2a2a3e;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font-display: 'Clash Display', sans-serif;
+    --font-body: 'Satoshi', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .screen { display: none; height: 100vh; animation: fadeIn 0.4s ease; }
+  .screen.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes popIn {
+    0% { opacity: 0; transform: scale(0.85); }
+    70% { transform: scale(1.03); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+    50% { box-shadow: 0 0 0 12px transparent; }
+  }
+  @keyframes timerPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* ===== JOIN SCREEN ===== */
+  .join {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .join::before {
+    content: '';
+    position: absolute;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 65%);
+    top: -200px; right: -150px;
+    pointer-events: none;
+  }
+
+  .logo-sm {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.25rem;
+    position: relative; z-index: 1;
+  }
+  .logo-sm-sub {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+    position: relative; z-index: 1;
+  }
+
+  .join-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+    position: relative; z-index: 1;
+  }
+  .join-card h2 {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    text-align: center;
+  }
+
+  .form-group { margin-bottom: 1.25rem; }
+  .form-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .form-group input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 1rem;
+    font-family: var(--font-body);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus { border-color: var(--accent); }
+  .form-group input.code-input {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 8px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.85rem 2rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #ff8855);
+    color: #fff;
+    width: 100%;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px var(--accent-glow);
+  }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .error-msg {
+    color: var(--danger);
+    font-size: 0.85rem;
+    text-align: center;
+    margin-top: 0.75rem;
+    display: none;
+  }
+
+  /* ===== WAITING SCREEN ===== */
+  .waiting {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+  }
+  .waiting-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: breathe 2s ease infinite;
+  }
+  .waiting h1 {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+  }
+  .waiting p {
+    color: var(--text-dim);
+    font-size: 1rem;
+  }
+  .waiting .player-name-display {
+    margin-top: 1.5rem;
+    padding: 0.5rem 1.5rem;
+    background: var(--surface-2);
+    border-radius: 99px;
+    font-weight: 600;
+    color: var(--accent);
+    display: inline-block;
+  }
+
+  /* ===== GUESS SCREEN (MAP) ===== */
+  .guess {
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .guess-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .round-badge {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--accent);
+  }
+  .timer {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.2rem;
+    padding: 0.3rem 0.9rem;
+    background: var(--surface-2);
+    border-radius: 99px;
+    border: 1px solid var(--border);
+  }
+  .timer.warning {
+    color: var(--danger);
+    border-color: var(--danger);
+    animation: timerPulse 0.5s ease infinite;
+  }
+  .player-score-badge {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+  .player-score-badge strong {
+    color: var(--accent-2);
+  }
+
+  .map-area {
+    flex: 1;
+    position: relative;
+  }
+  #player-map { width: 100%; height: 100%; }
+
+  .submit-bar {
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .submit-bar .btn {
+    flex: 1;
+  }
+  .btn-submit {
+    background: linear-gradient(135deg, var(--accent), #ff8855);
+    color: #fff;
+    animation: pulse 2s infinite;
+  }
+  .btn-submit:disabled {
+    opacity: 0.35;
+    animation: none;
+  }
+
+  .guess-confirmed {
+    position: absolute;
+    inset: 0;
+    background: rgba(10,10,15,0.88);
+    backdrop-filter: blur(12px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 150;
+    text-align: center;
+    padding: 2rem;
+  }
+  .guess-confirmed.active { display: flex; }
+  .guess-confirmed .check {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: popIn 0.4s ease;
+  }
+  .guess-confirmed h2 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .guess-confirmed p {
+    color: var(--text-dim);
+  }
+
+  /* ===== ROUND RESULT (PLAYER VIEW) ===== */
+  .player-result {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    text-align: center;
+  }
+  .player-result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    max-width: 420px;
+    width: 100%;
+    animation: popIn 0.4s ease;
+  }
+  .player-result-card h2 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .my-distance {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0.75rem 0;
+  }
+  .my-distance.close { color: var(--success); }
+  .my-distance.medium { color: var(--accent-2); }
+  .my-distance.far { color: var(--danger); }
+  .my-points {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    margin-bottom: 1.25rem;
+  }
+  .my-points strong { color: var(--accent); font-size: 1.3rem; }
+
+  #player-result-map {
+    width: 100%;
+    height: 200px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 1.25rem;
+  }
+
+  .mini-leaderboard {
+    text-align: left;
+  }
+  .mini-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .mini-row:last-child { border: none; }
+  .mini-row .rank { font-weight: 700; color: var(--accent); min-width: 2rem; }
+  .mini-row .name { flex: 1; font-weight: 500; }
+  .mini-row .pts { font-family: var(--font-display); font-weight: 600; color: var(--accent-2); }
+  .mini-row.me { background: var(--surface-2); margin: 0 -0.5rem; padding: 0.5rem; border-radius: 6px; }
+
+  .waiting-next {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    animation: breathe 2s ease infinite;
+  }
+
+  /* ===== FINAL RESULT (PLAYER VIEW) ===== */
+  .final {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .final::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 60%);
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .final-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2.5rem;
+    max-width: 420px;
+    width: 100%;
+    position: relative; z-index: 1;
+    animation: popIn 0.5s ease;
+  }
+  .final-trophy { font-size: 3.5rem; margin-bottom: 0.75rem; }
+  .final-card h1 {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    margin-bottom: 0.25rem;
+  }
+  .final-card .sub {
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+  }
+  .final-standings {
+    text-align: left;
+  }
+  .final-row {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.4rem;
+    background: var(--surface-2);
+  }
+  .final-row:first-child {
+    background: linear-gradient(135deg, rgba(255,107,53,0.15), rgba(255,179,71,0.1));
+    border: 1px solid rgba(255,107,53,0.3);
+  }
+  .final-row .rank {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--accent);
+    min-width: 2.5rem;
+    text-align: center;
+  }
+  .final-row .name { flex: 1; font-weight: 600; }
+  .final-row .score {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--accent-2);
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== JOIN SCREEN ===== -->
+<div id="join-screen" class="screen join active">
+  <div class="logo-sm">PhotoGuessr</div>
+  <div class="logo-sm-sub">Player</div>
+
+  <div class="join-card">
+    <h2>🎮 Join Game</h2>
+    <div class="form-group">
+      <label>Room Code</label>
+      <input type="text" id="room-code-input" class="code-input" placeholder="XXXX" maxlength="4" autocomplete="off" />
+    </div>
+    <div class="form-group">
+      <label>Your Name</label>
+      <input type="text" id="player-name-input" placeholder="Enter your name..." maxlength="20" />
+    </div>
+    <button class="btn btn-primary" id="join-btn">🚀 Join</button>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+</div>
+
+<!-- ===== WAITING FOR GAME START ===== -->
+<div id="waiting-screen" class="screen waiting">
+  <div class="waiting-icon">📸</div>
+  <h1>You're in!</h1>
+  <p>Waiting for the host to start the game...</p>
+  <div class="player-name-display" id="my-name-display"></div>
+</div>
+
+<!-- ===== GUESS SCREEN ===== -->
+<div id="guess-screen" class="screen guess">
+  <div class="guess-header">
+    <span class="round-badge" id="p-round-badge">Round 1 / 5</span>
+    <div class="timer" id="p-timer">
+      <span>⏱</span>
+      <span id="p-timer-value">60</span>
+    </div>
+    <span class="player-score-badge">Score: <strong id="p-my-score">0</strong></span>
+  </div>
+  <div class="map-area">
+    <div id="player-map"></div>
+    <div class="guess-confirmed" id="guess-confirmed">
+      <div class="check">✅</div>
+      <h2>Guess Locked In!</h2>
+      <p>Waiting for other players...</p>
+    </div>
+  </div>
+  <div class="submit-bar">
+    <button class="btn btn-submit" id="submit-guess-btn" disabled>📍 Submit Guess</button>
+  </div>
+</div>
+
+<!-- ===== PLAYER ROUND RESULT ===== -->
+<div id="player-result-screen" class="screen player-result">
+  <div class="player-result-card">
+    <h2 id="pr-title">Round Result</h2>
+    <div class="my-distance" id="pr-distance"></div>
+    <div class="my-points" id="pr-points"></div>
+    <div id="player-result-map"></div>
+    <div class="mini-leaderboard" id="pr-leaderboard"></div>
+    <div class="waiting-next">⏳ Waiting for host to continue...</div>
+  </div>
+</div>
+
+<!-- ===== FINAL SCREEN ===== -->
+<div id="final-screen" class="screen final">
+  <div class="final-card">
+    <div class="final-trophy">🏆</div>
+    <h1 id="f-title">Game Over!</h1>
+    <p class="sub" id="f-subtitle"></p>
+    <div class="final-standings" id="f-standings"></div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+// =============================================================================
+// 🔥 FIREBASE CONFIG — MUST MATCH HOST!
+// =============================================================================
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// =============================================================================
+// STATE
+// =============================================================================
+let roomRef = null;
+let playerId = null;
+let playerName = '';
+let playerMap = null;
+let guessMarker = null;
+let resultMapP = null;
+let hasGuessedThisRound = false;
+let currentRoundIndex = -1;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function calcPoints(distKm) {
+  if (distKm < 0.15) return 5000;
+  return Math.max(0, Math.round(5000 * Math.exp(-distKm / 1500)));
+}
+
+function formatDist(km) {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  if (km < 100) return `${km.toFixed(1)} km`;
+  return `${Math.round(km).toLocaleString()} km`;
+}
+
+// =============================================================================
+// JOIN ROOM
+// =============================================================================
+
+// Pre-fill room code from URL param
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('room')) {
+  document.getElementById('room-code-input').value = urlParams.get('room').toUpperCase();
+}
+
+document.getElementById('join-btn').addEventListener('click', joinRoom);
+document.getElementById('player-name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') joinRoom();
+});
+
+async function joinRoom() {
+  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+  const name = document.getElementById('player-name-input').value.trim();
+
+  if (!code || code.length !== 4) return showError('Enter a 4-character room code');
+  if (!name) return showError('Enter your name');
+
+  // Check room exists
+  const snap = await db.ref('rooms/' + code).once('value');
+  if (!snap.exists()) return showError('Room not found. Check the code!');
+
+  const room = snap.val();
+  if (room.state === 'playing') return showError('Game already in progress!');
+
+  roomRef = db.ref('rooms/' + code);
+  playerName = name;
+
+  // Create player entry
+  const playerRef = roomRef.child('players').push();
+  playerId = playerRef.key;
+
+  await playerRef.set({
+    name: playerName,
+    totalScore: 0,
+    joinedAt: firebase.database.ServerValue.TIMESTAMP,
+  });
+
+  // Remove player on disconnect
+  playerRef.onDisconnect().remove();
+
+  document.getElementById('my-name-display').textContent = `Playing as: ${playerName}`;
+  showScreen('waiting-screen');
+
+  // Listen for game state changes
+  listenToRoom(code);
+}
+
+// =============================================================================
+// ROOM LISTENER
+// =============================================================================
+function listenToRoom() {
+  // Listen for state changes
+  roomRef.on('value', (snap) => {
+    const data = snap.val();
+    if (!data) return;
+
+    const state = data.state;
+    const roundState = data.roundState;
+    const roundIndex = data.currentRound || 0;
+
+    if (state === 'lobby') {
+      // Stay on waiting screen
+    }
+
+    if (state === 'playing' && roundState === 'guessing') {
+      if (roundIndex !== currentRoundIndex) {
+        currentRoundIndex = roundIndex;
+        hasGuessedThisRound = false;
+        document.getElementById('guess-confirmed').classList.remove('active');
+        startGuessing(data);
+      }
+    }
+
+    if (state === 'playing' && roundState === 'results') {
+      showPlayerResult(data);
+    }
+
+    if (state === 'finished') {
+      showFinalScreen(data);
+    }
+  });
+
+  // Listen for timer
+  roomRef.child('timeLeft').on('value', (snap) => {
+    const timeLeft = snap.val();
+    if (timeLeft == null) return;
+
+    const timerEl = document.getElementById('p-timer');
+    const timerVal = document.getElementById('p-timer-value');
+    timerVal.textContent = timeLeft;
+
+    if (timeLeft <= 10) {
+      timerEl.classList.add('warning');
+    } else {
+      timerEl.classList.remove('warning');
+    }
+
+    // Auto-submit when time runs out
+    if (timeLeft <= 0 && !hasGuessedThisRound) {
+      submitGuess(true);
+    }
+  });
+}
+
+// =============================================================================
+// GUESSING
+// =============================================================================
+function startGuessing(data) {
+  showScreen('guess-screen');
+
+  const totalRounds = data.settings?.totalRounds || 5;
+  const roundIndex = data.currentRound || 0;
+
+  document.getElementById('p-round-badge').textContent = `Round ${roundIndex + 1} / ${totalRounds}`;
+
+  // Update my score
+  const myData = data.players?.[playerId];
+  document.getElementById('p-my-score').textContent = myData?.totalScore || 0;
+
+  // Init map
+  if (!playerMap) {
+    playerMap = L.map('player-map', {
+      center: [30, 0],
+      zoom: 2,
+      zoomControl: true,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OSM',
+      maxZoom: 18,
+    }).addTo(playerMap);
+
+    playerMap.on('click', (e) => {
+      if (hasGuessedThisRound) return;
+      placeGuess(e.latlng.lat, e.latlng.lng);
+    });
+  } else {
+    // Reset view
+    playerMap.setView([30, 0], 2);
+  }
+
+  // Remove old marker
+  if (guessMarker) {
+    playerMap.removeLayer(guessMarker);
+    guessMarker = null;
+  }
+  document.getElementById('submit-guess-btn').disabled = true;
+
+  setTimeout(() => playerMap.invalidateSize(), 100);
+}
+
+function placeGuess(lat, lng) {
+  if (guessMarker) {
+    guessMarker.setLatLng([lat, lng]);
+  } else {
+    guessMarker = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="width:28px;height:28px;background:var(--accent);border:3px solid #fff;border-radius:50%;box-shadow:0 3px 12px rgba(0,0,0,0.4);transform:translate(-14px,-14px);"></div>`,
+      })
+    }).addTo(playerMap);
+  }
+  document.getElementById('submit-guess-btn').disabled = false;
+}
+
+document.getElementById('submit-guess-btn').addEventListener('click', () => submitGuess(false));
+
+async function submitGuess(timedOut) {
+  if (hasGuessedThisRound) return;
+  hasGuessedThisRound = true;
+
+  let lat = 0, lng = 0;
+  if (guessMarker) {
+    const pos = guessMarker.getLatLng();
+    lat = pos.lat;
+    lng = pos.lng;
+  }
+
+  // Send guess to Firebase
+  await roomRef.child(`guesses/round_${currentRoundIndex}/${playerId}`).set({
+    lat, lng,
+    submittedAt: firebase.database.ServerValue.TIMESTAMP,
+    timedOut: timedOut,
+  });
+
+  // Show confirmation
+  document.getElementById('guess-confirmed').classList.add('active');
+}
+
+// =============================================================================
+// ROUND RESULT (PLAYER VIEW)
+// =============================================================================
+function showPlayerResult(data) {
+  const roundIndex = data.currentRound || 0;
+  const results = data.results?.[`round_${roundIndex}`];
+  if (!results) return;
+
+  const photo = data.photos?.[roundIndex];
+  if (!photo) return;
+
+  showScreen('player-result-screen');
+
+  // Find my result
+  const myResult = results.find(r => r.name === playerName) || { distance: 20000, points: 0 };
+
+  document.getElementById('pr-title').textContent =
+    myResult.distance < 10 ? '🎯 Incredible!' :
+    myResult.distance < 50 ? '🔥 So close!' :
+    myResult.distance < 300 ? '👍 Good guess!' :
+    myResult.distance < 1000 ? '🤔 Not bad...' : '🌍 Way off!';
+
+  const distEl = document.getElementById('pr-distance');
+  distEl.textContent = formatDist(myResult.distance);
+  distEl.className = 'my-distance ' +
+    (myResult.distance < 50 ? 'close' : myResult.distance < 500 ? 'medium' : 'far');
+
+  document.getElementById('pr-points').innerHTML = `<strong>+${myResult.points}</strong> points`;
+
+  // Mini map
+  if (resultMapP) resultMapP.remove();
+  resultMapP = L.map('player-result-map', {
+    center: [photo.lat, photo.lng],
+    zoom: 3,
+    zoomControl: false,
+    dragging: false,
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OSM',
+  }).addTo(resultMapP);
+
+  L.marker([photo.lat, photo.lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="width:16px;height:16px;background:#22c55e;border:2px solid #fff;border-radius:50%;transform:translate(-8px,-8px);"></div>`,
+    })
+  }).addTo(resultMapP);
+
+  // Mini leaderboard
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('pr-leaderboard').innerHTML = results.map((r, i) => `
+    <div class="mini-row ${r.name === playerName ? 'me' : ''}">
+      <span class="rank">${medals[i] || (i + 1)}</span>
+      <span class="name">${r.name}</span>
+      <span class="pts">+${r.points}</span>
+    </div>
+  `).join('');
+
+  // Update score
+  const myData = data.players?.[playerId];
+  document.getElementById('p-my-score').textContent = myData?.totalScore || 0;
+}
+
+// =============================================================================
+// FINAL SCREEN
+// =============================================================================
+function showFinalScreen(data) {
+  showScreen('final-screen');
+
+  const players = data.players || {};
+  const sorted = Object.values(players).sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+  const winner = sorted[0];
+
+  const isWinner = winner?.name === playerName;
+  document.getElementById('f-title').textContent = isWinner ? '🎉 You Won!' : `${winner?.name} Wins!`;
+  document.getElementById('f-subtitle').textContent =
+    `${(winner?.totalScore || 0).toLocaleString()} points`;
+
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('f-standings').innerHTML = sorted.map((p, i) => `
+    <div class="final-row" style="animation: slideUp 0.4s ease ${i * 0.1}s both;">
+      <span class="rank">${medals[i] || (i + 1)}</span>
+      <span class="name">${p.name}${p.name === playerName ? ' (you)' : ''}</span>
+      <span class="score">${(p.totalScore || 0).toLocaleString()}</span>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>

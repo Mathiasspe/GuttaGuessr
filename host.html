@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhotoGuessr — Host Screen</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Satoshi:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface-2: #1c1c28;
+    --surface-3: #25253a;
+    --accent: #ff6b35;
+    --accent-glow: #ff6b3544;
+    --accent-2: #ffb347;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --text: #eaeaf0;
+    --text-dim: #8888a0;
+    --text-muted: #555568;
+    --border: #2a2a3e;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font-display: 'Clash Display', sans-serif;
+    --font-body: 'Satoshi', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .screen { display: none; min-height: 100vh; animation: fadeIn 0.5s ease; }
+  .screen.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes popIn {
+    0% { opacity: 0; transform: scale(0.85); }
+    70% { transform: scale(1.03); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes timerPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
+    50% { box-shadow: 0 0 40px var(--accent-glow), 0 0 60px rgba(255,107,53,0.15); }
+  }
+
+  /* ===== LOBBY ===== */
+  .lobby {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .lobby::before {
+    content: '';
+    position: absolute;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 65%);
+    top: -250px; right: -200px;
+    pointer-events: none;
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 4.5rem;
+    font-weight: 700;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative; z-index: 1;
+  }
+  .logo-sub {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    margin-bottom: 2.5rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-weight: 500;
+    position: relative; z-index: 1;
+  }
+
+  .lobby-layout {
+    display: flex;
+    gap: 2rem;
+    max-width: 900px;
+    width: 100%;
+    position: relative; z-index: 1;
+  }
+
+  .lobby-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    flex: 1;
+  }
+  .lobby-card h2 {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+  }
+
+  .room-code-display {
+    text-align: center;
+    padding: 1.5rem;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    margin-bottom: 1.5rem;
+  }
+  .room-code-display label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 0.5rem;
+  }
+  .room-code-value {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 8px;
+  }
+  .room-url {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+    word-break: break-all;
+  }
+  .room-url code {
+    background: var(--surface-3);
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    color: var(--accent-2);
+    font-size: 0.75rem;
+  }
+
+  .form-group { margin-bottom: 1.25rem; }
+  .form-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .form-group select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 0.95rem;
+    font-family: var(--font-body);
+    outline: none;
+  }
+  .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface-2); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.85rem 2rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, #ff8855 100%);
+    color: #fff;
+    width: 100%;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px var(--accent-glow);
+  }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .players-waiting {
+    margin-top: 1rem;
+  }
+  .players-waiting h3 {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.75rem;
+  }
+  .player-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.9rem;
+    background: var(--surface-3);
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin: 0.2rem;
+    animation: popIn 0.3s ease;
+  }
+  .player-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+  .no-players {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* ===== GAME SCREEN ===== */
+  .game { flex-direction: column; height: 100vh; }
+
+  .game-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .round-badge {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--accent);
+  }
+  .timer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.4rem;
+    padding: 0.4rem 1.2rem;
+    background: var(--surface-2);
+    border-radius: 99px;
+    border: 1px solid var(--border);
+  }
+  .timer.warning {
+    color: var(--danger);
+    border-color: var(--danger);
+    animation: timerPulse 0.5s ease infinite;
+  }
+  .guesses-status {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+  .guesses-status strong { color: var(--success); }
+
+  .game-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+  }
+  .game-body img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    user-select: none;
+  }
+  .photo-hint {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(10px);
+    padding: 0.6rem 1.5rem;
+    border-radius: 99px;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+  .waiting-overlay {
+    position: absolute;
+    bottom: 5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.8rem 1.5rem;
+    border-radius: 99px;
+    font-size: 0.95rem;
+    color: var(--text);
+    animation: glow 2s ease infinite;
+    white-space: nowrap;
+  }
+
+  /* ===== RESULT SCREEN ===== */
+  .result {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    gap: 1.5rem;
+  }
+  .result-top {
+    text-align: center;
+    animation: popIn 0.4s ease;
+  }
+  .result-top h1 {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    margin-bottom: 0.25rem;
+  }
+  .result-top .round-label {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+  .result-content {
+    display: flex;
+    gap: 1.5rem;
+    max-width: 1100px;
+    width: 100%;
+  }
+  #result-map-host {
+    flex: 1.2;
+    min-height: 400px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .result-sidebar {
+    flex: 0.8;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .result-player-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    animation: slideUp 0.4s ease both;
+  }
+  .result-player-card:first-child {
+    background: linear-gradient(135deg, rgba(255,107,53,0.12), rgba(255,179,71,0.08));
+    border-color: rgba(255,107,53,0.3);
+  }
+  .result-rank {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.5rem;
+    min-width: 2.5rem;
+    text-align: center;
+  }
+  .result-player-info { flex: 1; }
+  .result-player-info .name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin-bottom: 0.15rem;
+  }
+  .result-player-info .dist {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .result-player-points {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--accent);
+  }
+  .result-actions {
+    margin-top: 0.5rem;
+  }
+
+  /* ===== LEADERBOARD ===== */
+  .leaderboard {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .leaderboard::before {
+    content: '';
+    position: absolute;
+    width: 900px; height: 900px;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 55%);
+    top: -350px; left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .leaderboard-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 3rem;
+    max-width: 560px;
+    width: 100%;
+    text-align: center;
+    position: relative; z-index: 1;
+    animation: popIn 0.5s ease;
+  }
+  .trophy { font-size: 4.5rem; margin-bottom: 0.75rem; }
+  .leaderboard-card h1 {
+    font-family: var(--font-display);
+    font-size: 2.4rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+  .leaderboard-card .subtitle {
+    color: var(--text-dim);
+    margin-bottom: 2rem;
+  }
+  .standing-row {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+    background: var(--surface-2);
+    text-align: left;
+  }
+  .standing-row:first-child {
+    background: linear-gradient(135deg, rgba(255,107,53,0.15), rgba(255,179,71,0.1));
+    border: 1px solid rgba(255,107,53,0.3);
+  }
+  .standing-rank {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: var(--accent);
+    width: 3rem;
+    text-align: center;
+  }
+  .standing-name { flex: 1; font-weight: 600; }
+  .standing-score {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: var(--accent-2);
+  }
+  .standing-score small {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  @media (max-width: 768px) {
+    .logo { font-size: 3rem; }
+    .lobby-layout { flex-direction: column; }
+    .result-content { flex-direction: column; }
+    #result-map-host { min-height: 280px; }
+    .room-code-value { font-size: 2.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LOBBY ===== -->
+<div id="lobby-screen" class="screen lobby active">
+  <div class="logo">PhotoGuessr</div>
+  <div class="logo-sub">Host Screen — Show this on TV or shared display</div>
+
+  <div class="lobby-layout">
+    <!-- Left: Room info -->
+    <div class="lobby-card">
+      <h2>📡 Game Room</h2>
+      <div class="room-code-display">
+        <label>Room Code</label>
+        <div class="room-code-value" id="room-code">----</div>
+        <div class="room-url" id="room-url"></div>
+      </div>
+      <div class="players-waiting">
+        <h3>Players joined</h3>
+        <div id="player-chips"><span class="no-players">Waiting for players to join...</span></div>
+      </div>
+    </div>
+
+    <!-- Right: Settings -->
+    <div class="lobby-card">
+      <h2>⚙️ Settings</h2>
+      <div class="form-group">
+        <label>Rounds</label>
+        <select id="num-rounds">
+          <option value="5">5 rounds</option>
+          <option value="10" selected>10 rounds</option>
+          <option value="15">15 rounds</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Time per Round</label>
+        <select id="time-limit">
+          <option value="30">30 seconds</option>
+          <option value="60" selected>60 seconds</option>
+          <option value="90">90 seconds</option>
+          <option value="120">2 minutes</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="start-game-btn" disabled>🚀 Start Game</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GAME (PHOTO DISPLAY) ===== -->
+<div id="game-screen" class="screen game">
+  <div class="game-header">
+    <span class="round-badge" id="round-badge">Round 1 / 5</span>
+    <div class="timer" id="timer">
+      <span>⏱</span>
+      <span id="timer-value">60</span>
+    </div>
+    <span class="guesses-status" id="guesses-status">
+      Guesses: <strong id="guesses-count">0</strong> / <span id="guesses-total">0</span>
+    </span>
+  </div>
+  <div class="game-body">
+    <img id="game-photo" src="" alt="Guess this location" />
+    <div class="photo-hint" id="photo-hint"></div>
+    <div class="waiting-overlay" id="waiting-overlay">⏳ Waiting for all players to guess...</div>
+  </div>
+</div>
+
+<!-- ===== ROUND RESULT ===== -->
+<div id="result-screen" class="screen result">
+  <div class="result-top">
+    <h1 id="result-title">🎯 Round Result</h1>
+    <p class="round-label" id="result-round-label">Round 1 / 5</p>
+  </div>
+  <div class="result-content">
+    <div id="result-map-host"></div>
+    <div class="result-sidebar" id="result-sidebar"></div>
+  </div>
+  <div class="result-actions">
+    <button class="btn btn-primary" id="next-round-btn" style="width:auto;padding:0.85rem 3rem;">Next Round →</button>
+  </div>
+</div>
+
+<!-- ===== FINAL LEADERBOARD ===== -->
+<div id="leaderboard-screen" class="screen leaderboard">
+  <div class="leaderboard-card">
+    <div class="trophy">🏆</div>
+    <h1 id="winner-name">Winner!</h1>
+    <p class="subtitle" id="winner-subtitle"></p>
+    <div id="final-standings"></div>
+    <button class="btn btn-primary" id="play-again-btn" style="margin-top:1.5rem;">🔁 Play Again</button>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+// =============================================================================
+// 🔥 FIREBASE CONFIG — REPLACE WITH YOUR OWN!
+// =============================================================================
+// Go to Firebase Console → Project Settings → Your apps → Config
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// =============================================================================
+// 📸 PHOTOS — REPLACE WITH YOUR OWN!
+// =============================================================================
+const PHOTOS = [
+  { url: "https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=1200", lat: 48.8566, lng: 2.3522, hint: "City of lights" },
+  { url: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1200", lat: 43.7696, lng: 11.2558, hint: "Tuscan beauty" },
+  { url: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1200", lat: 35.6762, lng: 139.6503, hint: "Land of the rising sun" },
+  { url: "https://images.unsplash.com/photo-1534430480872-3498386e7856?w=1200", lat: 40.7484, lng: -73.9857, hint: "The city that never sleeps" },
+  { url: "https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=1200", lat: 64.1466, lng: -21.9426, hint: "Fire and ice" },
+  { url: "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=1200", lat: -33.8688, lng: 151.2093, hint: "Down under" },
+  { url: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1200", lat: 41.9028, lng: 12.4964, hint: "The eternal city" },
+  { url: "https://images.unsplash.com/photo-1555992643-66e9d1f9b98a?w=1200", lat: 59.9139, lng: 10.7522, hint: "A Scandinavian capital" },
+  { url: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1200", lat: 25.2048, lng: 55.2708, hint: "Desert metropolis" },
+  { url: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200", lat: -41.2865, lng: 174.7762, hint: "Middle-earth" },
+  { url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200", lat: 48.8584, lng: 2.2945, hint: "Iron lady at sunset" },
+  { url: "https://images.unsplash.com/photo-1526392060635-9d6019884377?w=1200", lat: -13.1631, lng: -72.5450, hint: "Ancient mountain citadel" },
+  { url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200", lat: 37.7275, lng: -119.6364, hint: "America's famous valley" },
+  { url: "https://images.unsplash.com/photo-1549918864-48ac978761a4?w=1200", lat: 1.3521, lng: 103.8198, hint: "Garden city of Asia" },
+  { url: "https://images.unsplash.com/photo-1543363136-3fdb62e11be5?w=1200", lat: 60.3913, lng: 5.3221, hint: "Norwegian fjord country" },
+];
+
+// =============================================================================
+// GAME STATE
+// =============================================================================
+let roomRef = null;
+let roomCode = '';
+let timerInterval = null;
+let resultMap = null;
+
+// Generate 4-char room code
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function calcPoints(distKm) {
+  if (distKm < 0.15) return 5000;
+  return Math.max(0, Math.round(5000 * Math.exp(-distKm / 1500)));
+}
+
+function formatDist(km) {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  if (km < 100) return `${km.toFixed(1)} km`;
+  return `${Math.round(km).toLocaleString()} km`;
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// =============================================================================
+// LOBBY
+// =============================================================================
+async function createRoom() {
+  roomCode = generateCode();
+  roomRef = db.ref('rooms/' + roomCode);
+
+  // Clean up on disconnect
+  roomRef.onDisconnect().remove();
+
+  await roomRef.set({
+    state: 'lobby',
+    host: true,
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    settings: {
+      totalRounds: parseInt(document.getElementById('num-rounds').value),
+      timeLimit: parseInt(document.getElementById('time-limit').value),
+    },
+    players: {},
+    currentRound: 0,
+    photos: [],
+  });
+
+  document.getElementById('room-code').textContent = roomCode;
+
+  // Build player page URL
+  const base = window.location.href.replace(/\/[^/]*$/, '/');
+  const playerUrl = `${base}player.html?room=${roomCode}`;
+  document.getElementById('room-url').innerHTML =
+    `Players join at: <code>${playerUrl}</code>`;
+
+  // Listen for players
+  roomRef.child('players').on('value', (snap) => {
+    const players = snap.val() || {};
+    const names = Object.values(players).map(p => p.name);
+    const chipsEl = document.getElementById('player-chips');
+
+    if (names.length === 0) {
+      chipsEl.innerHTML = '<span class="no-players">Waiting for players to join...</span>';
+      document.getElementById('start-game-btn').disabled = true;
+    } else {
+      chipsEl.innerHTML = names.map(n =>
+        `<span class="player-chip"><span class="player-dot"></span>${n}</span>`
+      ).join('');
+      document.getElementById('start-game-btn').disabled = false;
+    }
+  });
+}
+
+createRoom();
+
+// Update settings when changed
+document.getElementById('num-rounds').addEventListener('change', () => {
+  if (roomRef) roomRef.child('settings/totalRounds').set(
+    parseInt(document.getElementById('num-rounds').value)
+  );
+});
+document.getElementById('time-limit').addEventListener('change', () => {
+  if (roomRef) roomRef.child('settings/timeLimit').set(
+    parseInt(document.getElementById('time-limit').value)
+  );
+});
+
+// Start game
+document.getElementById('start-game-btn').addEventListener('click', async () => {
+  const totalRounds = parseInt(document.getElementById('num-rounds').value);
+  const shuffled = shuffle(PHOTOS).slice(0, totalRounds);
+
+  // Store photos in Firebase (without answers for security isn't needed since friends game)
+  const photosData = shuffled.map(p => ({
+    url: p.url,
+    lat: p.lat,
+    lng: p.lng,
+    hint: p.hint || '',
+  }));
+
+  await roomRef.update({
+    state: 'playing',
+    currentRound: 0,
+    photos: photosData,
+    settings: {
+      totalRounds: totalRounds,
+      timeLimit: parseInt(document.getElementById('time-limit').value),
+    },
+  });
+
+  // Clear any old guesses
+  await roomRef.child('guesses').remove();
+
+  showScreen('game-screen');
+  startRound(0, photosData, totalRounds);
+});
+
+// =============================================================================
+// GAME ROUND
+// =============================================================================
+function startRound(roundIndex, photos, totalRounds) {
+  const photo = photos[roundIndex];
+  const settings = {
+    totalRounds,
+    timeLimit: parseInt(document.getElementById('time-limit').value),
+  };
+
+  // Update display
+  document.getElementById('round-badge').textContent = `Round ${roundIndex + 1} / ${totalRounds}`;
+  document.getElementById('game-photo').src = photo.url;
+  document.getElementById('photo-hint').textContent = photo.hint || '';
+  document.getElementById('waiting-overlay').style.display = 'flex';
+
+  // Get player count
+  roomRef.child('players').once('value', (snap) => {
+    const playerCount = Object.keys(snap.val() || {}).length;
+    document.getElementById('guesses-total').textContent = playerCount;
+    document.getElementById('guesses-count').textContent = '0';
+  });
+
+  // Signal round start to players
+  roomRef.update({
+    currentRound: roundIndex,
+    roundState: 'guessing',
+    roundStartedAt: firebase.database.ServerValue.TIMESTAMP,
+  });
+
+  // Clear previous round guesses
+  roomRef.child(`guesses/round_${roundIndex}`).remove();
+
+  // Start timer
+  startTimer(settings.timeLimit);
+
+  // Listen for guesses
+  listenForGuesses(roundIndex, photos, totalRounds);
+}
+
+function startTimer(seconds) {
+  clearInterval(timerInterval);
+  const timerEl = document.getElementById('timer');
+  const timerVal = document.getElementById('timer-value');
+
+  let timeLeft = seconds;
+  timerVal.textContent = timeLeft;
+  timerEl.classList.remove('warning');
+
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerVal.textContent = timeLeft;
+    if (timeLeft <= 10) timerEl.classList.add('warning');
+
+    // Sync timer to Firebase so players can see it
+    roomRef.child('timeLeft').set(timeLeft);
+
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      endRound();
+    }
+  }, 1000);
+}
+
+function listenForGuesses(roundIndex, photos, totalRounds) {
+  const guessRef = roomRef.child(`guesses/round_${roundIndex}`);
+
+  guessRef.on('value', (snap) => {
+    const guesses = snap.val() || {};
+    const guessCount = Object.keys(guesses).length;
+    document.getElementById('guesses-count').textContent = guessCount;
+
+    // Check if all players guessed
+    roomRef.child('players').once('value', (psnap) => {
+      const playerCount = Object.keys(psnap.val() || {}).length;
+      if (guessCount >= playerCount && playerCount > 0) {
+        clearInterval(timerInterval);
+        // Small delay so last player sees their guess confirmed
+        setTimeout(() => endRound(), 1000);
+      }
+    });
+  });
+
+  // Store references for cleanup
+  window._currentGuessRef = guessRef;
+  window._currentRoundIndex = roundIndex;
+  window._currentPhotos = photos;
+  window._currentTotalRounds = totalRounds;
+}
+
+async function endRound() {
+  const roundIndex = window._currentRoundIndex;
+  const photos = window._currentPhotos;
+  const totalRounds = window._currentTotalRounds;
+  const photo = photos[roundIndex];
+
+  // Signal round ended
+  await roomRef.update({ roundState: 'results' });
+
+  // Detach guess listener
+  if (window._currentGuessRef) window._currentGuessRef.off();
+
+  // Get all guesses
+  const guessSnap = await roomRef.child(`guesses/round_${roundIndex}`).once('value');
+  const guesses = guessSnap.val() || {};
+
+  // Get player info
+  const playerSnap = await roomRef.child('players').once('value');
+  const players = playerSnap.val() || {};
+
+  // Calculate scores
+  const results = [];
+  for (const [playerId, guess] of Object.entries(guesses)) {
+    const dist = haversine(guess.lat, guess.lng, photo.lat, photo.lng);
+    const points = calcPoints(dist);
+    results.push({
+      playerId,
+      name: players[playerId]?.name || 'Unknown',
+      lat: guess.lat,
+      lng: guess.lng,
+      distance: dist,
+      points,
+    });
+
+    // Update total score in Firebase
+    const currentScore = players[playerId]?.totalScore || 0;
+    await roomRef.child(`players/${playerId}/totalScore`).set(currentScore + points);
+  }
+
+  // Add players who didn't guess
+  for (const [playerId, player] of Object.entries(players)) {
+    if (!guesses[playerId]) {
+      results.push({
+        playerId,
+        name: player.name,
+        lat: null, lng: null,
+        distance: 20000,
+        points: 0,
+      });
+    }
+  }
+
+  results.sort((a, b) => b.points - a.points);
+
+  // Store results for players to see
+  await roomRef.child(`results/round_${roundIndex}`).set(
+    results.map(r => ({ name: r.name, distance: r.distance, points: r.points }))
+  );
+
+  showRoundResult(roundIndex, photo, results, totalRounds);
+}
+
+// =============================================================================
+// ROUND RESULT
+// =============================================================================
+function showRoundResult(roundIndex, photo, results, totalRounds) {
+  showScreen('result-screen');
+
+  const bestDist = results[0]?.distance || 20000;
+  document.getElementById('result-title').textContent =
+    bestDist < 10 ? '🎯 Incredible!' :
+    bestDist < 50 ? '🔥 So close!' :
+    bestDist < 300 ? '👍 Good guesses!' :
+    bestDist < 1000 ? '🤔 Tricky one...' : '🌍 That was tough!';
+
+  document.getElementById('result-round-label').textContent =
+    `Round ${roundIndex + 1} / ${totalRounds}`;
+
+  // Map
+  if (resultMap) resultMap.remove();
+  resultMap = L.map('result-map-host', { center: [photo.lat, photo.lng], zoom: 4, zoomControl: true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+  }).addTo(resultMap);
+
+  // Actual marker
+  L.marker([photo.lat, photo.lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="width:22px;height:22px;background:#22c55e;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,0.4);transform:translate(-11px,-11px);"></div>`,
+    })
+  }).addTo(resultMap).bindPopup('📍 Actual location').openPopup();
+
+  const colors = ['#ff6b35','#3b82f6','#a855f7','#ec4899','#14b8a6','#eab308','#6366f1','#f43f5e'];
+  const bounds = [[photo.lat, photo.lng]];
+  const medals = ['🥇','🥈','🥉'];
+
+  results.forEach((r, i) => {
+    if (r.lat != null) {
+      const color = colors[i % colors.length];
+      L.marker([r.lat, r.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="width:16px;height:16px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(-8px,-8px);"></div>`,
+        })
+      }).addTo(resultMap).bindPopup(`${r.name}: ${formatDist(r.distance)}`);
+
+      L.polyline([[r.lat, r.lng], [photo.lat, photo.lng]], {
+        color, weight: 2, dashArray: '6,6', opacity: 0.6
+      }).addTo(resultMap);
+
+      bounds.push([r.lat, r.lng]);
+    }
+  });
+
+  if (bounds.length > 1) resultMap.fitBounds(bounds, { padding: [50, 50] });
+
+  // Player cards
+  document.getElementById('result-sidebar').innerHTML = results.map((r, i) => `
+    <div class="result-player-card" style="animation-delay:${i * 0.1}s">
+      <span class="result-rank">${medals[i] || (i + 1)}</span>
+      <div class="result-player-info">
+        <div class="name">${r.name}</div>
+        <div class="dist">${r.lat != null ? formatDist(r.distance) : 'No guess'}</div>
+      </div>
+      <span class="result-player-points">+${r.points}</span>
+    </div>
+  `).join('');
+
+  // Next button
+  const nextBtn = document.getElementById('next-round-btn');
+  if (roundIndex >= totalRounds - 1) {
+    nextBtn.textContent = '🏆 Final Scores';
+    nextBtn.onclick = () => showFinalLeaderboard();
+  } else {
+    nextBtn.textContent = 'Next Round →';
+    nextBtn.onclick = () => {
+      if (resultMap) { resultMap.remove(); resultMap = null; }
+      showScreen('game-screen');
+      startRound(roundIndex + 1, window._currentPhotos, totalRounds);
+    };
+  }
+}
+
+// =============================================================================
+// FINAL LEADERBOARD
+// =============================================================================
+async function showFinalLeaderboard() {
+  if (resultMap) { resultMap.remove(); resultMap = null; }
+
+  const snap = await roomRef.child('players').once('value');
+  const players = snap.val() || {};
+  const sorted = Object.values(players).sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+
+  // Signal game over
+  await roomRef.update({ state: 'finished' });
+
+  showScreen('leaderboard-screen');
+
+  const winner = sorted[0];
+  document.getElementById('winner-name').textContent = `${winner.name} Wins!`;
+  document.getElementById('winner-subtitle').textContent =
+    `${(winner.totalScore || 0).toLocaleString()} points across ${window._currentTotalRounds} rounds`;
+
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('final-standings').innerHTML = sorted.map((p, i) => `
+    <div class="standing-row" style="animation: slideUp 0.4s ease ${i * 0.1}s both;">
+      <span class="standing-rank">${medals[i] || (i + 1)}</span>
+      <span class="standing-name">${p.name}</span>
+      <span class="standing-score">${(p.totalScore || 0).toLocaleString()} <small>pts</small></span>
+    </div>
+  `).join('');
+}
+
+// Play again
+document.getElementById('play-again-btn').addEventListener('click', async () => {
+  // Reset scores
+  const snap = await roomRef.child('players').once('value');
+  const players = snap.val() || {};
+  for (const id of Object.keys(players)) {
+    await roomRef.child(`players/${id}/totalScore`).set(0);
+  }
+  await roomRef.child('guesses').remove();
+  await roomRef.child('results').remove();
+  await roomRef.update({ state: 'lobby', currentRound: 0, roundState: null });
+
+  showScreen('lobby-screen');
+});
+</script>
+</body>
+</html>

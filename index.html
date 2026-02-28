@@ -300,7 +300,7 @@
   }
 
   .guess-confirmed {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background: rgba(10,10,15,0.88);
     backdrop-filter: blur(12px);
@@ -308,7 +308,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    z-index: 150;
+    z-index: 9999;
     text-align: center;
     padding: 2rem;
   }
@@ -509,11 +509,11 @@
   </div>
   <div class="map-area">
     <div id="player-map"></div>
-    <div class="guess-confirmed" id="guess-confirmed">
-      <div class="check">✅</div>
-      <h2>Guess Locked In!</h2>
-      <p>Waiting for other players...</p>
-    </div>
+  </div>
+  <div class="guess-confirmed" id="guess-confirmed">
+    <div class="check">✅</div>
+    <h2>Guess Locked In!</h2>
+    <p>Waiting for other players...</p>
   </div>
   <div class="submit-bar">
     <button class="btn btn-submit" id="submit-guess-btn" disabled>📍 Submit Guess</button>
@@ -551,13 +551,13 @@
 // 🔥 FIREBASE CONFIG — MUST MATCH HOST!
 // =============================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyC8OgZwMrx2fWL-lVsKOkys5fSMennFV8k",
-  authDomain: "simulatorpriser.firebaseapp.com",
-  databaseURL: "https://simulatorpriser-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "simulatorpriser",
-  storageBucket: "simulatorpriser.firebasestorage.app",
-  messagingSenderId: "821698736622",
-  appId: "1:821698736622:web:7a7982d953aa19ede55eff"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "YOUR_APP_ID"
 };
 
 firebase.initializeApp(firebaseConfig);

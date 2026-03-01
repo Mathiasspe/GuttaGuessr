@@ -507,7 +507,7 @@
 <!-- ===== LOBBY ===== -->
 <div id="lobby-screen" class="screen lobby active">
   <div class="logo">PhotoGuessr</div>
-  <div class="logo-sub">Hvor er bildet tatt?</div>
+  <div class="logo-sub"></div>
 
   <div class="lobby-layout">
     <!-- Left: Room info -->
@@ -516,7 +516,9 @@
       <div class="room-code-display">
         <label>Room Code</label>
         <div class="room-code-value" id="room-code">----</div>
-        <div class="room-url" id="room-url"></div>
+        <div style="margin-top: 1rem; text-align: center;">
+          <img src="QR-code-Player.png" alt="Scan to join" style="width: 180px; border-radius: 12px;" />
+        </div>
       </div>
       <div class="players-waiting">
         <h3>Players joined</h3>
@@ -620,28 +622,21 @@ const db = firebase.database();
 // 📸 PHOTOS — REPLACE WITH YOUR OWN!
 // =============================================================================
 const PHOTOS = [
-  { url: "photos/Middern_2019.JPEG", lat: 59.854939, lng: 10.549767, hint: "Aug 2019" },
-  { url: "photos/IMG_0843.JPEG", lat: 59.876058, lng: 10.476692, hint: "Apr 2018" },
-  { url: "photos/IMG_0117.JPEG", lat: 59.870564, lng: 10.518191, hint: "Oct 2015" },
-  { url: "photos/IMG_1131.JPEG", lat: 59.877826, lng: 10.514785, hint: "May 2018" },
-  { url: "photos/IMG_3979.JPEG", lat: 59.929918, lng: 10.716589, hint: "May 2019" },
-  { url: "photos/IMG_4221.JPEG", lat: 43.502558, lng: 16.446567, hint: "Jun 2019" },
-  { url: "photos/IMG_5589.JPEG", lat: 61.808575, lng: 9.682347, hint: "Jan 2020" },
-  { url: "photos/IMG_1767.JPEG", lat: 59.26667, lng: 10.40677, hint: "Jul 2024" },
-  { url: "photos/IMG_1455.JPEG", lat: 59.925813, lng: 10.777583, hint: "Oct 2023" },
-  { url: "photos/IMG_0442.JPEG", lat: 36.484922, lng: -4.955038, hint: "Jul 2022" },
-  { url: "photos/IMG_0114.JPEG", lat: 60.39589, lng: 5.325628, hint: "May 2022" },
-  { url: "photos/IMG_6592.JPEG", lat: 59.169177, lng: 10.437355, hint: "Jul 2020" },
-  { url: "photos/IMG_6543.JPEG", lat: 59.862439, lng: 10.533925, hint: "Jul 2020" },
-  { url: "photos/IMG_6129.JPEG", lat: 59.919516, lng: 10.717807, hint: "May 2020" },
-  { url: "photos/IMG_4151.JPEG", lat: 43.509437, lng: 16.43912, hint: "Jun 2019" },
-  { url: "photos/IMG_1555.JPEG", lat: 36.489727, lng: -4.77305, hint: "Jun 2018" },
-  { url: "photos/IMG_1097.JPEG", lat: 59.919075, lng: 10.729558, hint: "May 2018" },
-  { url: "photos/IMG_1560.JPEG", lat: 60.840908, lng: 9.1701, hint: "Jan 2024" },
-  { url: "photos/IMG_0759.JPEG", lat: 59.267738, lng: 10.411206, hint: "Jul 2022" },
-  { url: "photos/IMG_1247 (1).JPEG", lat: 59.959149, lng: 10.653833, hint: "Dec 2025" },
-
-
+  { url: "https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=1200", lat: 48.8566, lng: 2.3522, hint: "City of lights" },
+  { url: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1200", lat: 43.7696, lng: 11.2558, hint: "Tuscan beauty" },
+  { url: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1200", lat: 35.6762, lng: 139.6503, hint: "Land of the rising sun" },
+  { url: "https://images.unsplash.com/photo-1534430480872-3498386e7856?w=1200", lat: 40.7484, lng: -73.9857, hint: "The city that never sleeps" },
+  { url: "https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=1200", lat: 64.1466, lng: -21.9426, hint: "Fire and ice" },
+  { url: "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=1200", lat: -33.8688, lng: 151.2093, hint: "Down under" },
+  { url: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1200", lat: 41.9028, lng: 12.4964, hint: "The eternal city" },
+  { url: "https://images.unsplash.com/photo-1555992643-66e9d1f9b98a?w=1200", lat: 59.9139, lng: 10.7522, hint: "A Scandinavian capital" },
+  { url: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1200", lat: 25.2048, lng: 55.2708, hint: "Desert metropolis" },
+  { url: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200", lat: -41.2865, lng: 174.7762, hint: "Middle-earth" },
+  { url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200", lat: 48.8584, lng: 2.2945, hint: "Iron lady at sunset" },
+  { url: "https://images.unsplash.com/photo-1526392060635-9d6019884377?w=1200", lat: -13.1631, lng: -72.5450, hint: "Ancient mountain citadel" },
+  { url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200", lat: 37.7275, lng: -119.6364, hint: "America's famous valley" },
+  { url: "https://images.unsplash.com/photo-1549918864-48ac978761a4?w=1200", lat: 1.3521, lng: 103.8198, hint: "Garden city of Asia" },
+  { url: "https://images.unsplash.com/photo-1543363136-3fdb62e11be5?w=1200", lat: 60.3913, lng: 5.3221, hint: "Norwegian fjord country" },
 ];
 
 // =============================================================================
@@ -679,7 +674,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 
 function calcPoints(distKm) {
   if (distKm < 0.15) return 5000;
-  return Math.max(0, Math.round(5000 * Math.exp(-distKm / 2)));
+  return Math.max(0, Math.round(5000 * Math.exp(-distKm / 1500)));
 }
 
 function formatDist(km) {
@@ -717,12 +712,6 @@ async function createRoom() {
   });
 
   document.getElementById('room-code').textContent = roomCode;
-
-  // Build player page URL
-  const base = window.location.href.replace(/\/[^/]*$/, '/');
-  const playerUrl = `${base}player.html?room=${roomCode}`;
-  document.getElementById('room-url').innerHTML =
-    `Players join at: <code>${playerUrl}</code>`;
 
   // Listen for players
   roomRef.child('players').on('value', (snap) => {

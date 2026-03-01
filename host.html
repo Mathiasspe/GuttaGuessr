@@ -679,7 +679,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 
 function calcPoints(distKm) {
   if (distKm < 0.15) return 5000;
-  return Math.max(0, Math.round(5000 * Math.exp(-distKm / 1)));
+  return Math.max(0, Math.round(5000 * Math.exp(-distKm / 2)));
 }
 
 function formatDist(km) {

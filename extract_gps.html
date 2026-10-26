@@ -445,14 +445,14 @@
 
   <!-- Generated output -->
   <div class="output-section" id="output-section">
-    <h2>Generated Config</h2>
-    <p>Copy this and paste it into <code>host.html</code>, replacing the example <code>PHOTOS</code> array.</p>
+    <h2>Hints</h2>
+    <p>Optional: copy these lines into <code>hints.json</code> in the repo. Coordinates are read from the photos automatically.</p>
     <div class="code-block">
       <pre id="output-code"></pre>
     </div>
     <div class="btn-row">
       <button class="btn btn-primary" id="copy-btn">📋 Copy to Clipboard</button>
-      <button class="btn btn-secondary" id="download-btn">⬇ Download as JS file</button>
+      <button class="btn btn-secondary" id="download-btn">⬇ Download as hints.json</button>
     </div>
   </div>
 
@@ -460,11 +460,9 @@
   <div class="instructions">
     <h3>How to use</h3>
     <ol>
-      <li>Export your photos from iCloud — <strong>download originals</strong> to keep GPS data</li>
-      <li>Drop them onto this page</li>
-      <li>Edit the hints if you want (date is auto-filled)</li>
-      <li>Copy the generated code and paste it into <code>host.html</code></li>
-      <li>Put the same photo files in a <code>photos/</code> folder in your GitHub repo</li>
+      <li>You don't need this page to add photos — just upload them to the <code>photos/</code> folder on GitHub</li>
+      <li>Use it to check that a photo still has GPS data (export iCloud photos as <strong>originals</strong> to keep it)</li>
+      <li>If a position is wrong, add <code>"lat"</code> and <code>"lng"</code> for that photo in <code>hints.json</code></li>
     </ol>
   </div>
 </div>
@@ -649,16 +647,13 @@ function generateOutput() {
     hints[idx] = input.value;
   });
 
-  let code = 'const PHOTOS = [\n';
-
-  extractedPhotos.forEach((p, i) => {
+  // Lines for hints.json (GPS is read automatically from the photos on GitHub)
+  const lines = extractedPhotos.map((p, i) => {
     const hint = hints[i] !== undefined ? hints[i] : (p.date || '');
-    const safeHint = hint.replace(/"/g, '\\"');
-    code += `  { url: "photos/${p.filename}", lat: ${p.lat}, lng: ${p.lng}, hint: "${safeHint}" },\n`;
+    return `  ${JSON.stringify(p.filename)}: ${JSON.stringify(hint)}`;
   });
 
-  code += '];\n';
-  outputCode.textContent = code;
+  outputCode.textContent = '{\n' + lines.join(',\n') + '\n}\n';
 }
 
 // Copy button
@@ -688,11 +683,11 @@ function showToast() {
 // Download button
 document.getElementById('download-btn').addEventListener('click', () => {
   const text = outputCode.textContent;
-  const blob = new Blob([text], { type: 'text/javascript' });
+  const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'photos_config.js';
+  a.download = 'hints.json';
   a.click();
   URL.revokeObjectURL(url);
 });

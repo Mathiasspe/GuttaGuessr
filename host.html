@@ -184,6 +184,13 @@
   .form-group select:focus { border-color: var(--accent); }
   .form-group select option { background: var(--surface-2); }
 
+  .photo-count {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 1.25rem;
+  }
+  .photo-count.warning { color: var(--accent-2); }
+
   .btn {
     display: inline-flex;
     align-items: center;
@@ -529,12 +536,12 @@
     <!-- Right: Settings -->
     <div class="lobby-card">
       <h2>⚙️ Settings</h2>
+      <div class="photo-count" id="photo-count">Loading photos...</div>
       <div class="form-group">
         <label>Rounds</label>
+        <!-- Options are filled in by loadPhotos() based on how many photos there are -->
         <select id="num-rounds">
-          <option value="5">5 rounds</option>
           <option value="10" selected>10 rounds</option>
-          <option value="15">15 rounds</option>
         </select>
       </div>
       <div class="form-group">
@@ -619,30 +626,58 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // =============================================================================
-// 📸 PHOTOS — REPLACE WITH YOUR OWN!
+// 📸 PHOTOS — loaded from photos.json, which is built automatically from the
+// photos/ folder (see scripts/build_photos.py). Hints go in hints.json.
 // =============================================================================
-const PHOTOS = [
-  { url: "photos/Middern_2019.JPEG", lat: 59.854939, lng: 10.549767, hint: "Aug 2019" },
-  { url: "photos/IMG_0843.JPEG", lat: 59.876058, lng: 10.476692, hint: "Apr 2018" },
-  { url: "photos/IMG_0117.JPEG", lat: 59.870564, lng: 10.518191, hint: "Oct 2015" },
-  { url: "photos/IMG_1131.JPEG", lat: 59.877826, lng: 10.514785, hint: "May 2018" },
-  { url: "photos/IMG_3979.JPEG", lat: 59.929918, lng: 10.716589, hint: "May 2019" },
-  { url: "photos/IMG_4221.JPEG", lat: 43.502558, lng: 16.446567, hint: "Jun 2019" },
-  { url: "photos/IMG_5589.JPEG", lat: 61.808575, lng: 9.682347, hint: "Jan 2020" },
-  { url: "photos/IMG_1767.JPEG", lat: 59.26667, lng: 10.40677, hint: "Jul 2024" },
-  { url: "photos/IMG_1455.JPEG", lat: 59.925813, lng: 10.777583, hint: "Oct 2023" },
-  { url: "photos/IMG_0442.JPEG", lat: 36.484922, lng: -4.955038, hint: "Jul 2022" },
-  { url: "photos/IMG_0114.JPEG", lat: 60.39589, lng: 5.325628, hint: "May 2022" },
-  { url: "photos/IMG_6592.JPEG", lat: 59.169177, lng: 10.437355, hint: "Jul 2020" },
-  { url: "photos/IMG_6543.JPEG", lat: 59.862439, lng: 10.533925, hint: "Jul 2020" },
-  { url: "photos/IMG_6129.JPEG", lat: 59.919516, lng: 10.717807, hint: "May 2020" },
-  { url: "photos/IMG_4151.JPEG", lat: 43.509437, lng: 16.43912, hint: "Jun 2019" },
-  { url: "photos/IMG_1555.JPEG", lat: 36.489727, lng: -4.77305, hint: "Jun 2018" },
-  { url: "photos/IMG_1097.JPEG", lat: 59.919075, lng: 10.729558, hint: "May 2018" },
-  { url: "photos/IMG_1560.JPEG", lat: 60.840908, lng: 9.1701, hint: "Jan 2024" },
-  { url: "photos/IMG_0759.JPEG", lat: 59.267738, lng: 10.411206, hint: "Jul 2022" },
-  { url: "photos/IMG_1247 (1).JPEG", lat: 59.959149, lng: 10.653833, hint: "Dec 2025" },
-];
+let PHOTOS = [];
+let photosLoaded = false;
+const ROUND_CHOICES = [5, 10, 15];
+
+async function loadPhotos() {
+  const infoEl = document.getElementById('photo-count');
+  try {
+    const res = await fetch('photos.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    PHOTOS = await res.json();
+  } catch (e) {
+    console.error('Could not load photos.json', e);
+    PHOTOS = [];
+    infoEl.textContent = '⚠️ Could not load photos.json';
+    infoEl.classList.add('warning');
+  }
+  photosLoaded = true;
+
+  if (PHOTOS.length > 0) {
+    infoEl.textContent = `📸 ${PHOTOS.length} photo${PHOTOS.length === 1 ? '' : 's'} available`;
+    infoEl.classList.remove('warning');
+  } else if (!infoEl.classList.contains('warning')) {
+    infoEl.textContent = '⚠️ No photos yet — add some to the photos/ folder';
+    infoEl.classList.add('warning');
+  }
+
+  // Only offer round counts there are enough photos for, plus "all" when it's fewer
+  const select = document.getElementById('num-rounds');
+  const previous = parseInt(select.value);
+  const choices = ROUND_CHOICES.filter(n => n <= PHOTOS.length);
+  if (PHOTOS.length > 0 && !choices.includes(PHOTOS.length) && PHOTOS.length < ROUND_CHOICES[ROUND_CHOICES.length - 1]) {
+    choices.push(PHOTOS.length);
+  }
+  select.innerHTML = choices.map(n =>
+    `<option value="${n}">${n} round${n === 1 ? '' : 's'}${n === PHOTOS.length && !ROUND_CHOICES.includes(n) ? ' (all photos)' : ''}</option>`
+  ).join('');
+  if (choices.length > 0) {
+    select.value = String(choices.includes(previous) ? previous : choices[choices.length - 1]);
+    select.dispatchEvent(new Event('change'));
+  }
+
+  updateStartButton();
+}
+
+let playerCount = 0;
+function updateStartButton() {
+  document.getElementById('start-game-btn').disabled =
+    !photosLoaded || PHOTOS.length === 0 || playerCount === 0;
+}
 
 // =============================================================================
 // GAME STATE
@@ -726,17 +761,18 @@ async function createRoom() {
 
     if (names.length === 0) {
       chipsEl.innerHTML = '<span class="no-players">Waiting for players to join...</span>';
-      document.getElementById('start-game-btn').disabled = true;
     } else {
       chipsEl.innerHTML = names.map(n =>
         `<span class="player-chip"><span class="player-dot"></span>${n}</span>`
       ).join('');
-      document.getElementById('start-game-btn').disabled = false;
     }
+    playerCount = names.length;
+    updateStartButton();
   });
 }
 
 createRoom();
+loadPhotos();
 
 // Update settings when changed
 document.getElementById('num-rounds').addEventListener('change', () => {
@@ -752,7 +788,9 @@ document.getElementById('time-limit').addEventListener('change', () => {
 
 // Start game
 document.getElementById('start-game-btn').addEventListener('click', async () => {
-  const totalRounds = parseInt(document.getElementById('num-rounds').value);
+  // Never play more rounds than there are photos
+  const totalRounds = Math.min(parseInt(document.getElementById('num-rounds').value), PHOTOS.length);
+  if (!totalRounds) return;
   const shuffled = shuffle(PHOTOS).slice(0, totalRounds);
 
   // Store photos in Firebase (without answers for security isn't needed since friends game)

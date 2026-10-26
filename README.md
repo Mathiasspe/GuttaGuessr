@@ -30,7 +30,11 @@ Distance is calculated using the Haversine formula (great-circle distance on a s
 photoguessr/
 ├── host.html           ← Open on TV/shared screen
 ├── player.html         ← Players open on their phones
-├── extract_gps.html    ← Tool for extracting GPS from photos
+├── extract_gps.html    ← Optional tool for checking a photo's GPS
+├── hints.json          ← Hints you write per photo (edit by hand)
+├── photos.json         ← Generated photo list — don't edit
+├── scripts/build_photos.py
+├── .github/workflows/build-photos.yml
 ├── README.md
 └── photos/
     ├── IMG_1234.jpg
@@ -42,7 +46,9 @@ photoguessr/
 
 **player.html** — The phone interface. Players enter the room code and their name to join, then place a pin on the map each round. Shows a confirmation screen after submitting and round results with their score.
 
-**extract_gps.html** — A browser-based tool that reads GPS coordinates from photo EXIF data. Drop your photos in, verify the location on a mini map per photo (drag to correct if off), edit hints, and copy the generated config into `host.html`. Runs entirely in the browser — no server, no upload.
+**extract_gps.html** — Optional browser tool that reads GPS coordinates from photo EXIF data, so you can check a photo's location on a mini map before uploading. Runs entirely in the browser — no server, no upload.
+
+**photos.json** — The list of photos the game uses. Built automatically by a GitHub Action (`scripts/build_photos.py`) whenever `photos/` or `hints.json` changes: it reads the GPS position from each photo and adds the hint from `hints.json`. The host only offers as many rounds as there are photos.
 
 ## Setup
 
@@ -64,12 +70,21 @@ photoguessr/
 
 ### 2. Photos
 
-1. Export photos from iCloud (download originals to preserve GPS EXIF data)
-2. Put them in the `photos/` folder
-3. Open `extract_gps.html` in your browser
-4. Drop the photos from `photos/` onto the page
-5. Verify each location on the mini map — drag the marker to correct if needed
-6. Copy the generated `PHOTOS` array and paste it into `host.html`, replacing the example array
+1. Export photos from iCloud (download originals to preserve GPS EXIF data). JPEG, PNG or WebP — not HEIC.
+2. Upload them to the `photos/` folder on GitHub (Add file → Upload files)
+3. Wait a minute: the **Build photo list** action updates `photos.json` and adds a blank entry for each new photo to `hints.json`
+4. Fill in the hints in `hints.json` (edit it on GitHub):
+   ```json
+   {
+     "IMG_0759.JPEG": "Jul 2022",
+     "IMG_1560.JPEG": { "hint": "Jan 2024", "lat": 60.8409, "lng": 9.1701 }
+   }
+   ```
+   The object form with `lat`/`lng` overrides the GPS position, for photos that are off or have no GPS.
+
+Photos without GPS are skipped; the action run on GitHub (Actions tab) lists them as warnings. To remove a photo, just delete it from `photos/`.
+
+If you edit locally, run `git pull` first (the action commits to `main`), and you can rebuild by hand with `python scripts/build_photos.py` (needs Pillow). To test locally, serve the folder (e.g. `python -m http.server`) — opening `host.html` as a file can't load `photos.json`.
 
 ### 3. Deploy
 
